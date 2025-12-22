@@ -1,10 +1,11 @@
-# 1.Data setting
-data_txt_root: '/dataset/example/train_data_info.txt'  # data csv_filepath
+# 1. Data setting
+# 【注意】这里必须指向你生成的 jsonl 文件路径，不要用 .txt
+data_txt_root: './training_data/edit_data.jsonl'
 resolution: 1024 
-aspect_ratio_type: 'mar_1024'  # data bucketing strategy, mar_256、mar_512、mar_1024
+aspect_ratio_type: 'mar_1024'
 null_text_ratio: 0.1
-dataloader_num_workers: 8
-train_batch_size: 4
+dataloader_num_workers: 16  # H200 机器通常 CPU 也很强，拉高加载速度
+train_batch_size: 32        # 【关键】H200 的特权。普通卡只能开 1-4，你可以直接开 32！这能让训练飞快。
 repeats: 1
 
 prompt_template_encode_prefix: "<|im_start|>system\nAs an image editing expert, first analyze the content and attributes of the input image(s). Then, based on the user's editing instructions, clearly and precisely determine how to modify the given image(s), ensuring that only the specified parts are altered and all other aspects remain consistent with the original(s).<|im_end|>\n<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>"
@@ -13,35 +14,37 @@ prompt_template_encode_start_idx: 67
 prompt_template_encode_end_idx: 5
 
 # 2. Model setting
-text_tokenizer_max_length: 512  # tokenizer max len 
-pretrained_model_name_or_path: "./weights/LongCat-Image-Edit" # root directory of the model，with vae、transformer、scheduler eta;
-diffusion_pretrain_weight:  null # if a specified diffusion weight path is provided, load the model parameters from the current directory.
-use_dynamic_shifting: true #  scheduler dynamic shifting
+text_tokenizer_max_length: 512 
+# 【注意】确保这里指向你下载的 LongCat-Image-Dev 文件夹
+pretrained_model_name_or_path: "meituan-longcat/LongCat-Image-Dev" 
+diffusion_pretrain_weight:  null
+use_dynamic_shifting: true
 resume_from_checkpoint: latest
-  # - "latest"  # Loads most recent step checkpoint
-  # - "/path/to/checkpoint"  # Resumes from specified directory
 
 # 3. Training setting
-lora_rank: 32
+lora_rank: 64             # 稍微改大一点，有助于捕捉“擦除文字”这种细节
 use_ema: False
 ema_rate: 0.999
-mixed_precision: 'bf16'
-max_train_steps: 100000
-gradient_accumulation_steps: 1
-gradient_checkpointing: true
+mixed_precision: 'bf16'   # H200 对 BF16 支持极好，保持开启
+
+# 【极速策略】
+max_train_steps: 1000     # 别跑 10万步了！文字移除很简单，1000步足够看效果。
+gradient_accumulation_steps: 1 # 你 batch_size 够大了，不需要累积梯度
+gradient_checkpointing: true   # 保持开启，虽然你显存大，但 DiT 架构还是很吃显存的
+
 gradient_clip: 1.0
-learning_rate: 1.0e-4
+learning_rate: 1.0e-4     # 黄金学习率
 adam_weight_decay: 1.0e-2
 adam_epsilon: 1.0e-8
 adam_beta1: 0.9
 adam_beta2: 0.999
 lr_num_cycles: 1
 lr_power: 1.0
-lr_scheduler: 'constant'
-lr_warmup_steps: 1000
+lr_scheduler: 'constant'  # 简单粗暴，全程满速
+lr_warmup_steps: 0        # 不需要热身，直接冲
 
-#4. Log setting
-log_interval: 20
-save_model_steps: 1000
-work_dir: 'output/edit_lora_model'
+# 4. Log setting
+log_interval: 10          # 既然跑得快，日志打印频繁点
+save_model_steps: 200     # 每 200 步保存一次。这样你在 200, 400, 600... 都有模型可以测
+work_dir: 'output/edit_lora_h200'
 seed: 43
