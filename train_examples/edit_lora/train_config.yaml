@@ -45,6 +45,6 @@ lr_warmup_steps: 0        # 不需要热身，直接冲
 
 # 4. Log setting
 log_interval: 10          # 既然跑得快，日志打印频繁点
-save_model_steps: 200     # 每 200 步保存一次。这样你在 200, 400, 600... 都有模型可以测
+save_model_steps: 50     # 每 200 步保存一次。这样你在 200, 400, 600... 都有模型可以测
 work_dir: 'output/edit_lora_h200'
 seed: 43
